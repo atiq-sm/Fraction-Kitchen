@@ -55,7 +55,6 @@ export class GameScene extends Phaser.Scene {
   // Adventure mode
   private adventureMode = false;
   private runState: RunState | null = null;
-  private nodeId: string | null = null;
   private customerTarget = 0;
   private customersCompleted = 0;
 
@@ -76,7 +75,6 @@ export class GameScene extends Phaser.Scene {
     // Adventure mode setup
     this.adventureMode = data?.adventure ?? false;
     this.runState = data?.runState ?? null;
-    this.nodeId = data?.nodeId ?? null;
     this.customerTarget = data?.customerCount ?? 0;
     this.customersCompleted = 0;
 
@@ -88,6 +86,11 @@ export class GameScene extends Phaser.Scene {
       : this.config.meta.lives;
     this.glassState = [];
     this.isServing = false;
+    this.scoopButtons = [];
+    this.ingredientButtons = [];
+    this.powerUpIndicators = [];
+    this.patienceTimer = null;
+    this.currentOrder = null;
     this.particles = new ParticleManager(this);
 
     // Apply purchased power-ups
@@ -197,7 +200,12 @@ export class GameScene extends Phaser.Scene {
       this.scene.start('ShopScene', {
         shop: this.shop,
         returnScene: 'GameScene',
-        returnData: { shop: this.shop },
+        returnData: {
+          shop: this.shop,
+          runState: this.runState ?? undefined,
+          adventure: this.adventureMode,
+          customerCount: this.customerTarget,
+        },
       });
     });
 

@@ -47,9 +47,7 @@ const MAP_OFFSET_Y = 100;
 export class MapScene extends Phaser.Scene {
   private runState!: RunState;
   private nodeGraphics: Map<string, Phaser.GameObjects.Container> = new Map();
-  private livesText!: Phaser.GameObjects.Text;
-  private scoreText!: Phaser.GameObjects.Text;
-  private coinsText!: Phaser.GameObjects.Text;
+
 
   constructor() {
     super({ key: 'MapScene' });
@@ -117,7 +115,7 @@ export class MapScene extends Phaser.Scene {
     hudBg.fillStyle(0x000000, 0.4);
     hudBg.fillRoundedRect(20, 70, GAME_WIDTH - 40, 40, 8);
 
-    this.livesText = this.add
+    this.add
       .text(50, 90, `❤️ ${this.runState.lives}`, {
         fontFamily: FONTS.display,
         fontSize: '22px',
@@ -125,7 +123,7 @@ export class MapScene extends Phaser.Scene {
       })
       .setOrigin(0, 0.5);
 
-    this.scoreText = this.add
+    this.add
       .text(GAME_WIDTH / 2, 90, `Score: ${this.runState.score}`, {
         fontFamily: FONTS.display,
         fontSize: '22px',
@@ -133,7 +131,7 @@ export class MapScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    this.coinsText = this.add
+    this.add
       .text(GAME_WIDTH - 50, 90, `🪙 ${this.runState.shop.coins}`, {
         fontFamily: FONTS.display,
         fontSize: '22px',
@@ -345,6 +343,10 @@ export class MapScene extends Phaser.Scene {
     const cx = GAME_WIDTH / 2;
     const cy = GAME_HEIGHT / 2;
 
+    const blocker = this.add.zone(cx, cy, GAME_WIDTH, GAME_HEIGHT)
+      .setDepth(299)
+      .setInteractive();
+
     const overlay = this.add.graphics().setDepth(300);
     overlay.fillStyle(0x000000, 0.5);
     overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -366,21 +368,26 @@ export class MapScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(302);
 
-    const btn = this.add
+    const btnZone = this.add.zone(cx, cy + 45, 200, 50)
+      .setDepth(304)
+      .setInteractive({ useHandCursor: true });
+
+    const btnLabel = this.add
       .text(cx, cy + 45, 'Continue', {
         fontFamily: FONTS.display,
         fontSize: '24px',
         color: '#FF5E5B',
       })
       .setOrigin(0.5)
-      .setDepth(302)
-      .setInteractive({ useHandCursor: true });
+      .setDepth(303);
 
-    btn.on('pointerdown', () => {
+    btnZone.on('pointerdown', () => {
+      blocker.destroy();
       overlay.destroy();
       panel.destroy();
       label.destroy();
-      btn.destroy();
+      btnLabel.destroy();
+      btnZone.destroy();
       onDone();
     });
   }

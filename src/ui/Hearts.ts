@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, FONTS } from '../config/constants';
+import { FONTS } from '../config/constants';
 
 export class Hearts extends Phaser.GameObjects.Container {
   private heartTexts: Phaser.GameObjects.Text[] = [];

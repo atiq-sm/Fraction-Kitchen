@@ -54,6 +54,8 @@ export class MathBattleScene extends Phaser.Scene {
     this.earnedScore = 0;
     this.earnedCoins = 0;
     this.isAnswering = false;
+    this.answerButtons = [];
+    this.patienceTimer = null;
     this.particles = new ParticleManager(this);
 
     const gen = new MathProblemGenerator(Date.now());
@@ -263,7 +265,7 @@ export class MathBattleScene extends Phaser.Scene {
     const progress = Math.max(0, this.patienceRemaining / this.patienceTotal);
 
     this.timerBar.clear();
-    let color = COLORS.mint;
+    let color: number = COLORS.mint;
     if (progress < 0.5) color = COLORS.mango;
     if (progress < 0.25) color = COLORS.accent;
 
@@ -445,7 +447,7 @@ export class MathBattleScene extends Phaser.Scene {
     const cy = GAME_HEIGHT / 2;
 
     // Clickable overlay blocks input to everything behind
-    const blocker = this.add.zone(cx, cy, GAME_WIDTH, GAME_HEIGHT)
+    this.add.zone(cx, cy, GAME_WIDTH, GAME_HEIGHT)
       .setDepth(299)
       .setInteractive();
 

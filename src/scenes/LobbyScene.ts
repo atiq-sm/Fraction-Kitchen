@@ -72,11 +72,10 @@ export class LobbyScene extends Phaser.Scene {
     inputBg.strokeRoundedRect(cx - 100, panelTop + 295, 200, 60, 12);
 
     this.joinInput = this.add
-      .text(cx, panelTop + 325, '____', {
+      .text(cx, panelTop + 325, '_ _ _ _', {
         fontFamily: FONTS.display,
         fontSize: '38px',
         color: '#3A2E39',
-        letterSpacing: 10,
       })
       .setOrigin(0.5);
 

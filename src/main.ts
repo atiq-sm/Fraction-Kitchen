@@ -11,6 +11,14 @@ import { ResultsScene } from './scenes/ResultsScene';
 import { LobbyScene } from './scenes/LobbyScene';
 import { GAME_WIDTH, GAME_HEIGHT } from './config/constants';
 
+window.addEventListener('error', (e) => {
+  const div = document.createElement('div');
+  div.style.cssText =
+    'position:fixed;top:0;left:0;right:0;padding:12px;background:#ff0033;color:#fff;font:14px monospace;z-index:9999;white-space:pre-wrap;';
+  div.textContent = `[ERROR] ${e.message}\n${e.filename}:${e.lineno}`;
+  document.body.appendChild(div);
+});
+
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.WEBGL,
   width: GAME_WIDTH,

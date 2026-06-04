@@ -53,6 +53,9 @@ export class RunState {
     }
     const current = this.map.nodes.get(this.currentNodeId);
     if (!current) return [];
-    return current.connections;
+    return current.connections.filter((id) => {
+      const node = this.map.nodes.get(id);
+      return node && !node.completed;
+    });
   }
 }
