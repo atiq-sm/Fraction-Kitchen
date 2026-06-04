@@ -162,9 +162,9 @@ export class ShopScene extends Phaser.Scene {
       this.itemButtons.push({ container, cardBg, btnBg, costText, ownedText, itemId: item.id });
     });
 
-    // Continue button
+    // Continue button — high depth to be above item containers
     const contY = panelTop + ph - 50;
-    const contBg = this.add.graphics();
+    const contBg = this.add.graphics().setDepth(100);
     contBg.fillStyle(COLORS.accent, 1);
     contBg.fillRoundedRect(cx - 140, contY - 28, 280, 56, 16);
     contBg.fillStyle(0xffffff, 0.15);
@@ -180,10 +180,12 @@ export class ShopScene extends Phaser.Scene {
         stroke: '#3A2E39',
         strokeThickness: 2,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(101);
 
     this.add
       .zone(cx, contY, 280, 56)
+      .setDepth(102)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         playTap();

@@ -59,17 +59,17 @@ export class MapScene extends Phaser.Scene {
     this.runState = data?.runState ?? new RunState();
     this.nodeGraphics.clear();
 
+    // Auto-complete start node BEFORE drawing so available nodes render correctly
+    if (!this.runState.currentNodeId) {
+      this.runState.completeNode('node_0_0');
+    }
+
     this.drawBackground();
     this.drawHud();
     this.drawConnections();
     this.drawNodes();
 
     this.cameras.main.fadeIn(300);
-
-    // Auto-complete start node
-    if (!this.runState.currentNodeId) {
-      this.runState.completeNode('node_0_0');
-    }
 
     // Check for game over
     if (this.runState.isGameOver()) {
