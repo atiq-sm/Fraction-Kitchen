@@ -351,8 +351,16 @@ export class MathBattleScene extends Phaser.Scene {
     this.time.delayedCall(800, () => this.showProblem());
   }
 
+  private disableAllButtons() {
+    for (const btn of this.answerButtons) {
+      btn.disableInteractive();
+      btn.setAlpha(0.3);
+    }
+  }
+
   private handleVictory() {
     if (this.patienceTimer) this.patienceTimer.remove();
+    this.disableAllButtons();
 
     this.runState.completeNode(this.nodeId);
     this.runState.addScore(this.earnedScore);
@@ -371,6 +379,9 @@ export class MathBattleScene extends Phaser.Scene {
   private showRewardScreen() {
     const cx = GAME_WIDTH / 2;
     const cy = GAME_HEIGHT / 2;
+
+    // Block input behind
+    this.add.zone(cx, cy, GAME_WIDTH, GAME_HEIGHT).setDepth(299).setInteractive();
 
     const overlay = this.add.graphics().setDepth(300);
     overlay.fillStyle(0x000000, 0.5);
@@ -402,18 +413,25 @@ export class MathBattleScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(302);
 
-    const btn = this.add
-      .text(cx, cy + 60, 'Continue →', {
+    // Continue button with bg
+    const btnBg = this.add.graphics().setDepth(302);
+    btnBg.fillStyle(COLORS.accent, 1);
+    btnBg.fillRoundedRect(cx - 100, cy + 38, 200, 48, 14);
+
+    this.add
+      .text(cx, cy + 62, 'Continue →', {
         fontFamily: FONTS.display,
-        fontSize: '28px',
-        color: '#FF5E5B',
+        fontSize: '26px',
+        color: '#FFFDF7',
       })
       .setOrigin(0.5)
-      .setDepth(302)
-      .setInteractive({ useHandCursor: true });
+      .setDepth(303);
 
-    btn.on('pointerdown', () => {
-      this.scene.start('MapScene', { runState: this.runState });
+    this.add.zone(cx, cy + 62, 200, 48)
+      .setDepth(304)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => {
+        this.scene.start('MapScene', { runState: this.runState });
     });
 
     this.particles.emitConfetti(cx, cy - 100);
@@ -422,6 +440,11 @@ export class MathBattleScene extends Phaser.Scene {
   private showVictoryScreen() {
     const cx = GAME_WIDTH / 2;
     const cy = GAME_HEIGHT / 2;
+
+    // Clickable overlay blocks input to everything behind
+    const blocker = this.add.zone(cx, cy, GAME_WIDTH, GAME_HEIGHT)
+      .setDepth(299)
+      .setInteractive();
 
     const overlay = this.add.graphics().setDepth(300);
     overlay.fillStyle(0x000000, 0.6);
@@ -462,31 +485,39 @@ export class MathBattleScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(302);
 
-    const menuBtn = this.add
-      .text(cx - 120, cy + 80, 'Menu', {
+    // Menu button with background
+    const menuBg = this.add.graphics().setDepth(302);
+    menuBg.fillStyle(COLORS.accent, 1);
+    menuBg.fillRoundedRect(cx - 220, cy + 55, 180, 50, 14);
+    this.add
+      .text(cx - 130, cy + 80, 'Menu', {
         fontFamily: FONTS.display,
         fontSize: '26px',
-        color: '#FF5E5B',
+        color: '#FFFDF7',
       })
       .setOrigin(0.5)
-      .setDepth(302)
-      .setInteractive({ useHandCursor: true });
+      .setDepth(303);
+    this.add.zone(cx - 130, cy + 80, 180, 50)
+      .setDepth(304)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.scene.start('MenuScene'));
 
-    menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
-
-    const endlessBtn = this.add
-      .text(cx + 120, cy + 80, 'Endless Mode →', {
+    // Endless mode button with background
+    const endlessBg = this.add.graphics().setDepth(302);
+    endlessBg.fillStyle(COLORS.mint, 1);
+    endlessBg.fillRoundedRect(cx + 40, cy + 55, 220, 50, 14);
+    this.add
+      .text(cx + 150, cy + 80, 'Endless Mode →', {
         fontFamily: FONTS.display,
-        fontSize: '26px',
-        color: '#3CB371',
+        fontSize: '24px',
+        color: '#FFFDF7',
       })
       .setOrigin(0.5)
-      .setDepth(302)
-      .setInteractive({ useHandCursor: true });
-
-    endlessBtn.on('pointerdown', () => {
-      this.scene.start('GameScene', { shop: this.runState.shop });
-    });
+      .setDepth(303);
+    this.add.zone(cx + 150, cy + 80, 220, 50)
+      .setDepth(304)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.scene.start('GameScene', { shop: this.runState.shop }));
 
     for (let i = 0; i < 3; i++) {
       this.time.delayedCall(i * 400, () => {
