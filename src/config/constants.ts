@@ -1,5 +1,5 @@
-export const GAME_WIDTH = 1280;
-export const GAME_HEIGHT = 720;
+export const GAME_WIDTH = 1920;
+export const GAME_HEIGHT = 1080;
 
 export const COLORS = {
   bgTop: 0xffd8a8,
@@ -36,15 +36,15 @@ export const FONTS = {
 } as const;
 
 export const LAYOUT = {
-  glass: { x: 340, y: 200, width: 160, height: 300 },
-  customer: { x: 780, y: 180 },
-  ticket: { x: 780, y: 380 },
-  scoopPalette: { x: 640, y: 620, spacing: 110 },
+  glass: { x: 480, y: 280, width: 200, height: 400 },
+  customer: { x: 1150, y: 260 },
+  ticket: { x: 1150, y: 540 },
+  scoopPalette: { x: 960, y: 940, spacing: 140 },
   hud: {
-    heartsX: 40, heartsY: 20,
-    scoreX: 1240, scoreY: 20,
-    timerY: 60,
+    heartsX: 50, heartsY: 30,
+    scoreX: 1870, scoreY: 30,
+    timerY: 80,
   },
-  serveButton: { x: 340, y: 560 },
-  dumpButton: { x: 340, y: 620 },
+  serveButton: { x: 480, y: 800 },
+  dumpButton: { x: 480, y: 870 },
 } as const;

@@ -18,111 +18,109 @@ export class LobbyScene extends Phaser.Scene {
 
   create() {
     const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
 
-    // Background
     const bg = this.add.graphics();
     bg.fillGradientStyle(COLORS.bgTop, COLORS.bgTop, COLORS.bgBottom, COLORS.bgBottom);
     bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    // Panel
+    const pw = 700;
+    const ph = 700;
     const panel = this.add.graphics();
     panel.fillStyle(COLORS.cream, 0.95);
-    panel.fillRoundedRect(cx - 300, 80, 600, 520, 20);
+    panel.fillRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, 24);
     panel.lineStyle(4, COLORS.ink, 0.6);
-    panel.strokeRoundedRect(cx - 300, 80, 600, 520, 20);
+    panel.strokeRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, 24);
+
+    const panelTop = cy - ph / 2;
 
     this.add
-      .text(cx, 120, 'Multiplayer', {
+      .text(cx, panelTop + 50, 'Multiplayer', {
         fontFamily: FONTS.display,
-        fontSize: '48px',
+        fontSize: '56px',
         color: '#3A2E39',
       })
       .setOrigin(0.5);
 
     this.add
-      .text(cx, 170, 'Head-to-Head Fraction Battle!', {
+      .text(cx, panelTop + 110, 'Head-to-Head Fraction Battle!', {
         fontFamily: FONTS.body,
-        fontSize: '20px',
+        fontSize: '24px',
         color: '#FF5E5B',
       })
       .setOrigin(0.5);
 
-    // Create Room button
-    this.createButton(cx - 140, 230, 'Create Room', COLORS.mint, () => this.handleCreate());
+    this.createButton(cx - 160, panelTop + 190, 'Create Room', COLORS.mint, () =>
+      this.handleCreate(),
+    );
+    this.createButton(cx + 160, panelTop + 190, 'Join Room', COLORS.blue, () =>
+      this.handleJoin(),
+    );
 
-    // Join Room section
-    this.createButton(cx + 140, 230, 'Join Room', COLORS.blue, () => this.handleJoin());
-
-    // Code input area
     this.add
-      .text(cx, 310, 'Room Code:', {
+      .text(cx, panelTop + 270, 'Room Code:', {
         fontFamily: FONTS.body,
-        fontSize: '18px',
+        fontSize: '22px',
         color: '#3A2E39',
       })
       .setOrigin(0.5);
 
     const inputBg = this.add.graphics();
     inputBg.fillStyle(COLORS.surface, 1);
-    inputBg.fillRoundedRect(cx - 80, 330, 160, 50, 10);
+    inputBg.fillRoundedRect(cx - 100, panelTop + 295, 200, 60, 12);
     inputBg.lineStyle(2, COLORS.ink, 0.4);
-    inputBg.strokeRoundedRect(cx - 80, 330, 160, 50, 10);
+    inputBg.strokeRoundedRect(cx - 100, panelTop + 295, 200, 60, 12);
 
     this.joinInput = this.add
-      .text(cx, 355, '____', {
+      .text(cx, panelTop + 325, '____', {
         fontFamily: FONTS.display,
-        fontSize: '32px',
+        fontSize: '38px',
         color: '#3A2E39',
-        letterSpacing: 8,
+        letterSpacing: 10,
       })
       .setOrigin(0.5);
 
-    // Keyboard input for room code
     this.input.keyboard!.on('keydown', (event: KeyboardEvent) => {
       if (event.key === 'Backspace') {
         this.inputCode = this.inputCode.slice(0, -1);
       } else if (this.inputCode.length < 4 && /^[a-zA-Z0-9]$/.test(event.key)) {
         this.inputCode += event.key.toUpperCase();
       }
-      const display = this.inputCode.padEnd(4, '_');
-      this.joinInput.setText(display);
+      this.joinInput.setText(this.inputCode.padEnd(4, '_'));
     });
 
-    // Status
     this.statusText = this.add
-      .text(cx, 420, '', {
+      .text(cx, panelTop + 420, '', {
         fontFamily: FONTS.body,
-        fontSize: '20px',
+        fontSize: '24px',
         color: '#3A2E39',
         align: 'center',
       })
       .setOrigin(0.5);
 
     this.roomCodeText = this.add
-      .text(cx, 460, '', {
+      .text(cx, panelTop + 480, '', {
         fontFamily: FONTS.display,
-        fontSize: '48px',
+        fontSize: '56px',
         color: '#FF5E5B',
       })
       .setOrigin(0.5);
 
-    // Countdown text (hidden)
     this.countdownText = this.add
-      .text(cx, 350, '', {
+      .text(cx, cy, '', {
         fontFamily: FONTS.display,
-        fontSize: '72px',
+        fontSize: '84px',
         color: '#FFB703',
         stroke: '#3A2E39',
-        strokeThickness: 5,
+        strokeThickness: 6,
       })
       .setOrigin(0.5)
       .setAlpha(0);
 
-    // Back button
     this.add
-      .text(100, 560, '← Back', {
+      .text(120, panelTop + ph - 40, '← Back', {
         fontFamily: FONTS.body,
-        fontSize: '22px',
+        fontSize: '26px',
         color: '#3A2E39',
       })
       .setOrigin(0.5)
@@ -142,16 +140,16 @@ export class LobbyScene extends Phaser.Scene {
   ) {
     const g = this.add.graphics();
     g.fillStyle(color, 1);
-    g.fillRoundedRect(x - 100, y - 25, 200, 50, 14);
+    g.fillRoundedRect(x - 110, y - 28, 220, 56, 16);
     g.fillStyle(0xffffff, 0.15);
-    g.fillRoundedRect(x - 96, y - 22, 192, 22, { tl: 12, tr: 12, bl: 0, br: 0 });
+    g.fillRoundedRect(x - 106, y - 24, 212, 24, { tl: 14, tr: 14, bl: 0, br: 0 });
     g.lineStyle(3, COLORS.ink, 0.7);
-    g.strokeRoundedRect(x - 100, y - 25, 200, 50, 14);
+    g.strokeRoundedRect(x - 110, y - 28, 220, 56, 16);
 
     this.add
       .text(x, y, label, {
         fontFamily: FONTS.display,
-        fontSize: '22px',
+        fontSize: '24px',
         color: '#FFFDF7',
         stroke: '#3A2E39',
         strokeThickness: 2,
@@ -159,7 +157,7 @@ export class LobbyScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .zone(x, y, 200, 50)
+      .zone(x, y, 220, 56)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', onClick);
   }
@@ -167,7 +165,6 @@ export class LobbyScene extends Phaser.Scene {
   private async handleCreate() {
     playTap();
     this.statusText.setText('Creating room...');
-
     try {
       await this.connectClient();
       this.client!.onMessage((msg) => this.handleServerMessage(msg));
@@ -184,7 +181,6 @@ export class LobbyScene extends Phaser.Scene {
     }
     playTap();
     this.statusText.setText('Joining room...');
-
     try {
       await this.connectClient();
       this.client!.onMessage((msg) => this.handleServerMessage(msg));
@@ -211,21 +207,17 @@ export class LobbyScene extends Phaser.Scene {
         this.roomCodeText.setText(msg.roomCode as string);
         this.statusText.setText('Room created! Share this code:');
         break;
-
       case 'joined':
         this.playerId = msg.playerId as string;
         this.statusText.setText('Joined! Waiting for match to start...');
         break;
-
       case 'opponent-joined':
         this.statusText.setText('Opponent joined! Starting soon...');
         break;
-
       case 'match-ready':
         this.statusText.setText('Match starting!');
         this.startCountdown();
         break;
-
       case 'round-start':
         this.scene.start('GameScene', {
           multiplayer: true,
@@ -236,11 +228,9 @@ export class LobbyScene extends Phaser.Scene {
           round: msg.round,
         });
         break;
-
       case 'error':
         this.statusText.setText(msg.message as string);
         break;
-
       case 'disconnected':
         this.statusText.setText('Disconnected from server');
         break;
@@ -249,10 +239,8 @@ export class LobbyScene extends Phaser.Scene {
 
   private startCountdown() {
     let count = 3;
-    this.countdownText.setAlpha(1);
-    this.countdownText.setText(String(count));
-
-    const timer = this.time.addEvent({
+    this.countdownText.setAlpha(1).setText(String(count));
+    this.time.addEvent({
       delay: 1000,
       repeat: 2,
       callback: () => {

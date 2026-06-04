@@ -34,6 +34,7 @@ export class GameScene extends Phaser.Scene {
   private orderStartTime = 0;
   private patienceTimer: Phaser.Time.TimerEvent | null = null;
   private patienceRemaining = 0;
+  private isServing = false;
 
   private selectedIngredientId: string | null = null;
   private ingredientButtons: Phaser.GameObjects.Container[] = [];
@@ -65,7 +66,7 @@ export class GameScene extends Phaser.Scene {
       bg.fillGradientStyle(COLORS.bgTop, COLORS.bgTop, COLORS.bgBottom, COLORS.bgBottom);
       bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
       bg.fillGradientStyle(COLORS.wood, COLORS.woodLight, COLORS.woodDark, COLORS.wood);
-      bg.fillRect(0, 540, GAME_WIDTH, 180);
+      bg.fillRect(0, Math.round(GAME_HEIGHT * 0.75), GAME_WIDTH, Math.round(GAME_HEIGHT * 0.25));
     }
 
     this.glass = new GlassVisual(
@@ -168,6 +169,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnOrder() {
+    this.isServing = false;
     const tier = this.difficulty.currentTier;
     this.currentOrder = this.orderGen.generate(tier);
     this.glassState = [];
@@ -353,7 +355,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handlePour(denominator: number) {
-    if (!this.currentOrder) return;
+    if (!this.currentOrder || this.isServing) return;
 
     Sound.playPour();
 
@@ -381,8 +383,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleServe() {
-    if (!this.currentOrder) return;
+    if (!this.currentOrder || this.isServing) return;
+    if (this.glassState.length === 0) return;
 
+    this.isServing = true;
     const timeMs = Date.now() - this.orderStartTime;
     const result = validateServe(this.glassState, this.currentOrder);
 
@@ -428,6 +432,7 @@ export class GameScene extends Phaser.Scene {
         this.time.delayedCall(300, () => this.spawnOrder());
       });
     } else {
+      this.isServing = false;
       this.scoreManager.serveFail();
       this.difficulty.record({ correct: false, timeMs });
 
