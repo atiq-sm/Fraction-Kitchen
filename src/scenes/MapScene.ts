@@ -151,7 +151,14 @@ export class MapScene extends Phaser.Scene {
         if (!target) continue;
 
         const isAvailable = this.isNodeAvailable(targetId);
-        g.lineStyle(isAvailable ? 3 : 2, isAvailable ? 0xffd8a8 : 0x444466, isAvailable ? 0.8 : 0.3);
+        const isCompleted = node.completed && target.completed;
+        if (isAvailable) {
+          g.lineStyle(5, 0xffd8a8, 0.9);
+        } else if (isCompleted) {
+          g.lineStyle(4, 0x667799, 0.5);
+        } else {
+          g.lineStyle(3, 0x556688, 0.35);
+        }
         g.lineBetween(
           node.x + MAP_OFFSET_X,
           node.y + MAP_OFFSET_Y,
