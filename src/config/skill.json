@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "title": "Fraction Kitchen",
+    "theme": "smoothie-bar",
+    "sessionMode": "endless",
+    "lives": 3
+  },
+  "glass": { "capacityCups": 1.5 },
+  "ingredients": [
+    { "id": "strawberry", "name": "Strawberry", "colorHex": "#FF4D6D" },
+    { "id": "banana",     "name": "Banana",     "colorHex": "#FFCE45" },
+    { "id": "blueberry",  "name": "Blueberry",  "colorHex": "#5B6CFF" },
+    { "id": "lime",       "name": "Lime",       "colorHex": "#3CB371" }
+  ],
+  "difficulty": {
+    "startTier": 1,
+    "minTier": 1,
+    "maxTier": 5,
+    "windowSize": 5,
+    "promoteAccuracy": 0.8,
+    "demoteAccuracy": 0.4,
+    "fastTimeMs": 6000
+  },
+  "tiers": [
+    { "tier": 1, "allowedDenominators": [2,3,4],     "ingredientCount": [1,1], "scoopsPerIngredient": [1,3], "allowMixedNumbers": false, "maxTargetValue": 1.0, "patienceMs": 14000 },
+    { "tier": 2, "allowedDenominators": [2,3,4,6],   "ingredientCount": [1,1], "scoopsPerIngredient": [1,4], "allowMixedNumbers": false, "maxTargetValue": 1.0, "patienceMs": 12000 },
+    { "tier": 3, "allowedDenominators": [2,3,4,6],   "ingredientCount": [1,1], "scoopsPerIngredient": [2,4], "allowMixedNumbers": false, "maxTargetValue": 1.0, "patienceMs": 11000 },
+    { "tier": 4, "allowedDenominators": [2,3,4,6,8], "ingredientCount": [1,2], "scoopsPerIngredient": [2,5], "allowMixedNumbers": true,  "maxTargetValue": 1.5, "patienceMs": 10000 },
+    { "tier": 5, "allowedDenominators": [2,3,4,6,8], "ingredientCount": [2,3], "scoopsPerIngredient": [2,6], "allowMixedNumbers": true,  "maxTargetValue": 1.5, "patienceMs": 9000 }
+  ]
+}
