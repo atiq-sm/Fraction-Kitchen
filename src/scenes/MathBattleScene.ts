@@ -127,6 +127,14 @@ export class MathBattleScene extends Phaser.Scene {
   }
 
   private showProblem() {
+    // Clean up previous problem's elements FIRST
+    if (this.questionText) {
+      this.questionText.destroy();
+      this.questionText = undefined!;
+    }
+    for (const btn of this.answerButtons) btn.destroy();
+    this.answerButtons = [];
+
     if (this.currentIndex >= this.problems.length) {
       this.handleVictory();
       return;
@@ -135,11 +143,6 @@ export class MathBattleScene extends Phaser.Scene {
     this.isAnswering = false;
     const problem = this.problems[this.currentIndex];
     this.progressText.setText(`Problem ${this.currentIndex + 1}/${this.problems.length}`);
-
-    // Clear old question/buttons
-    if (this.questionText) this.questionText.destroy();
-    for (const btn of this.answerButtons) btn.destroy();
-    this.answerButtons = [];
 
     const cx = GAME_WIDTH / 2;
     const qY = GAME_HEIGHT * 0.35;
