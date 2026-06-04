@@ -20,9 +20,11 @@ export class HudScene extends Phaser.Scene {
 
   create() {
     const config = this.registry.get('skillConfig') as SkillConfig;
+    const gs = this.scene.get('GameScene') as { lives: number };
+    const maxLives = gs?.lives ?? config.meta.lives;
 
     this.timerBar = new TimerBar(this);
-    this.hearts = new Hearts(this, LAYOUT.hud.heartsX, LAYOUT.hud.heartsY, config.meta.lives);
+    this.hearts = new Hearts(this, LAYOUT.hud.heartsX, LAYOUT.hud.heartsY, maxLives);
     this.comboText = new ComboText(this, LAYOUT.glass.x, LAYOUT.glass.y + 80);
 
     this.scoreText = this.add

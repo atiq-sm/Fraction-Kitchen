@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS, FONTS } from '../config/constants';
 import { initAudio, isMuted, setMuted, playTap } from '../audio/SoundSynth';
 import { ScoreManager } from '../core/ScoreManager';
+import { ShopManager } from '../core/ShopManager';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -83,8 +84,15 @@ export class MenuScene extends Phaser.Scene {
     startZone.on('pointerdown', () => {
       initAudio();
       playTap();
+      const shopMgr = new ShopManager();
       this.cameras.main.fadeOut(300, 58, 46, 57);
-      this.time.delayedCall(300, () => this.scene.start('GameScene'));
+      this.time.delayedCall(300, () =>
+        this.scene.start('ShopScene', {
+          shop: shopMgr,
+          returnScene: 'GameScene',
+          returnData: { shop: shopMgr },
+        }),
+      );
     });
     startZone.on('pointerover', () => btnText.setScale(1.06));
     startZone.on('pointerout', () => btnText.setScale(1));
@@ -121,19 +129,21 @@ export class MenuScene extends Phaser.Scene {
     mpZone.on('pointerover', () => mpText.setScale(1.05));
     mpZone.on('pointerout', () => mpText.setScale(1));
 
-    // Best score
+    // Best score + coins
     const sm = new ScoreManager();
-    if (sm.bestScore > 0) {
-      this.add
-        .text(cx, panelTop + 480, `Best Score: ${sm.bestScore}`, {
-          fontFamily: FONTS.display,
-          fontSize: '26px',
-          color: '#FFB703',
-          stroke: '#3A2E39',
-          strokeThickness: 2,
-        })
-        .setOrigin(0.5);
-    }
+    const shopInfo = new ShopManager();
+    const statsLine = [];
+    if (sm.bestScore > 0) statsLine.push(`🏆 ${sm.bestScore}`);
+    statsLine.push(`🪙 ${shopInfo.coins}`);
+    this.add
+      .text(cx, panelTop + 480, statsLine.join('    '), {
+        fontFamily: FONTS.display,
+        fontSize: '26px',
+        color: '#FFB703',
+        stroke: '#3A2E39',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5);
 
     // How to play
     const howToY = panelTop + 530;

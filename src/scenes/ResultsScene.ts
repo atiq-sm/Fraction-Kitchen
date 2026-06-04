@@ -9,6 +9,7 @@ interface ResultsData {
   tier: number;
   customers: number;
   coins: number;
+  persistentCoins?: number;
 }
 
 export class ResultsScene extends Phaser.Scene {
@@ -103,6 +104,7 @@ export class ResultsScene extends Phaser.Scene {
       { label: 'Tier Reached', value: String(data.tier || 1), icon: '📈' },
       { label: 'Customers Served', value: String(data.customers || 0), icon: '🧑' },
       { label: 'Coins Earned', value: String(data.coins || 0), icon: '🪙' },
+      { label: 'Total Coins', value: String(data.persistentCoins || 0), icon: '💰' },
     ];
 
     stats.forEach((stat, i) => {

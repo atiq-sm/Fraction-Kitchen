@@ -54,6 +54,14 @@ export class ScoreManager {
     this._combo = 0;
   }
 
+  addBonusScore(points: number): void {
+    this._score += points;
+    if (this._score > this._bestScore) {
+      this._bestScore = this._score;
+      this.saveBestScore(this._bestScore);
+    }
+  }
+
   reset(): void {
     this._score = 0;
     this._coins = 0;

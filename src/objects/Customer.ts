@@ -1,30 +1,49 @@
 import Phaser from 'phaser';
+import { GAME_WIDTH } from '../config/constants';
 
 export class Customer extends Phaser.GameObjects.Container {
   private sprite: Phaser.GameObjects.Image;
   private variant: number;
   private idleTween: Phaser.Tweens.Tween | null = null;
+  private homeX: number;
+  private homeY: number;
+  private lastVariant = -1;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y);
+    this.homeX = x;
+    this.homeY = y;
 
     this.variant = Phaser.Math.Between(0, 4);
     this.sprite = scene.add.image(0, 0, `customer_${this.variant}_happy`);
-    this.sprite.setScale(1.4);
+    this.sprite.setScale(1.8);
     this.add(this.sprite);
 
     scene.add.existing(this);
   }
 
   arrive() {
-    this.setX(1400);
-    this.setAlpha(1);
-    this.variant = Phaser.Math.Between(0, 4);
+    if (this.idleTween) {
+      this.idleTween.stop();
+      this.idleTween = null;
+    }
+
+    // Pick a different variant than last time
+    let newVariant: number;
+    do {
+      newVariant = Phaser.Math.Between(0, 4);
+    } while (newVariant === this.lastVariant);
+    this.variant = newVariant;
+    this.lastVariant = newVariant;
+
     this.sprite.setTexture(`customer_${this.variant}_happy`);
+    this.setPosition(GAME_WIDTH + 100, this.homeY);
+    this.setAlpha(1);
+    this.setScale(1);
 
     this.scene.tweens.add({
       targets: this,
-      x: this.scene.registry.get('customerX') || 780,
+      x: this.homeX,
       duration: 500,
       ease: 'Back.easeOut',
       onComplete: () => this.startIdleBob(),
@@ -35,8 +54,8 @@ export class Customer extends Phaser.GameObjects.Container {
     if (this.idleTween) this.idleTween.stop();
     this.idleTween = this.scene.tweens.add({
       targets: this,
-      y: this.y - 6,
-      duration: 1000,
+      y: this.homeY - 8,
+      duration: 1200,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
@@ -59,7 +78,7 @@ export class Customer extends Phaser.GameObjects.Container {
     this.sprite.setTexture(`customer_${this.variant}_sad`);
     this.scene.tweens.add({
       targets: this,
-      x: this.x + 5,
+      x: this.x + 6,
       duration: 50,
       yoyo: true,
       repeat: 3,
@@ -67,7 +86,10 @@ export class Customer extends Phaser.GameObjects.Container {
   }
 
   leave() {
-    if (this.idleTween) this.idleTween.stop();
+    if (this.idleTween) {
+      this.idleTween.stop();
+      this.idleTween = null;
+    }
     this.scene.tweens.add({
       targets: this,
       x: -200,
@@ -78,7 +100,10 @@ export class Customer extends Phaser.GameObjects.Container {
   }
 
   destroy(fromScene?: boolean) {
-    if (this.idleTween) this.idleTween.stop();
+    if (this.idleTween) {
+      this.idleTween.stop();
+      this.idleTween = null;
+    }
     super.destroy(fromScene);
   }
 }

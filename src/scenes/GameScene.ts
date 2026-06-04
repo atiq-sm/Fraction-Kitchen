@@ -4,6 +4,7 @@ import { RNG } from '../core/RNG';
 import { OrderGenerator } from '../core/OrderGenerator';
 import { DifficultyManager } from '../core/DifficultyManager';
 import { ScoreManager } from '../core/ScoreManager';
+import { ShopManager } from '../core/ShopManager';
 import { totalFill, validateServe } from '../core/Glass';
 import type { GlassState, Order, SkillConfig, Ingredient, Pour } from '../core/types';
 import { GlassVisual } from '../objects/GlassVisual';
@@ -19,6 +20,7 @@ export class GameScene extends Phaser.Scene {
   private orderGen!: OrderGenerator;
   private difficulty!: DifficultyManager;
   scoreManager!: ScoreManager;
+  private shop!: ShopManager;
   private config!: SkillConfig;
   private ingredients!: Ingredient[];
   private particles!: ParticleManager;
@@ -38,14 +40,14 @@ export class GameScene extends Phaser.Scene {
 
   private selectedIngredientId: string | null = null;
   private ingredientButtons: Phaser.GameObjects.Container[] = [];
-  private serveButtonContainer!: Phaser.GameObjects.Container;
-  private dumpButtonContainer!: Phaser.GameObjects.Container;
+  private debugCoinText!: Phaser.GameObjects.Text;
+  private powerUpIndicators: Phaser.GameObjects.Text[] = [];
 
   constructor() {
     super({ key: 'GameScene' });
   }
 
-  create() {
+  create(data?: { shop?: ShopManager }) {
     this.config = this.registry.get('skillConfig') as SkillConfig;
     this.ingredients = this.config.ingredients;
 
@@ -54,9 +56,17 @@ export class GameScene extends Phaser.Scene {
     this.difficulty = new DifficultyManager(this.config.difficulty);
     this.scoreManager = new ScoreManager();
     this.scoreManager.reset();
+
+    // Shop integration
+    this.shop = data?.shop ?? new ShopManager();
+
     this.lives = this.config.meta.lives;
     this.glassState = [];
+    this.isServing = false;
     this.particles = new ParticleManager(this);
+
+    // Apply purchased power-ups
+    this.applyPurchasedItems();
 
     // Background
     if (this.textures.exists('bg')) {
@@ -78,12 +88,12 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.ticket = new Ticket(this, LAYOUT.ticket.x, LAYOUT.ticket.y - 40);
-
     this.customer = new Customer(this, LAYOUT.customer.x, LAYOUT.customer.y);
-    this.registry.set('customerX', LAYOUT.customer.x);
 
     this.createServeButton();
     this.createDumpButton();
+    this.createDebugBar();
+    this.createPowerUpIndicators();
 
     this.scene.launch('HudScene');
 
@@ -96,23 +106,135 @@ export class GameScene extends Phaser.Scene {
     this.spawnOrder();
   }
 
+  private applyPurchasedItems() {
+    // Extra hearts
+    const extraHearts = this.shop.getOwned('extra_heart');
+    this.lives += extraHearts;
+
+    // Time freeze → stored as active effect
+    const timeFreezes = this.shop.getOwned('time_freeze');
+    if (timeFreezes > 0) this.shop.activateEffect('time_freeze', timeFreezes);
+
+    // Hint reveal → stored as active effect
+    const hints = this.shop.getOwned('hint_reveal');
+    if (hints > 0) this.shop.activateEffect('hint_reveal', hints);
+
+    // Double points → stored as active effect (uses = orders)
+    const doublePoints = this.shop.getOwned('double_points');
+    if (doublePoints > 0) this.shop.activateEffect('double_points', doublePoints * 3);
+
+    // Tip jar → permanent for this run
+    if (this.shop.getOwned('tip_jar') > 0) this.shop.activateEffect('tip_jar', 999);
+  }
+
+  private createDebugBar() {
+    const debugBg = this.add.graphics().setDepth(200);
+    debugBg.fillStyle(0x000000, 0.5);
+    debugBg.fillRoundedRect(GAME_WIDTH - 340, GAME_HEIGHT - 50, 330, 42, 8);
+
+    this.debugCoinText = this.add
+      .text(GAME_WIDTH - 260, GAME_HEIGHT - 29, `🪙 ${this.shop.coins}`, {
+        fontFamily: FONTS.body,
+        fontSize: '16px',
+        color: '#FFB703',
+      })
+      .setOrigin(0, 0.5)
+      .setDepth(201);
+
+    const addBtn = this.add
+      .text(GAME_WIDTH - 170, GAME_HEIGHT - 29, '[+100 coins]', {
+        fontFamily: FONTS.body,
+        fontSize: '16px',
+        color: '#3CB371',
+      })
+      .setOrigin(0, 0.5)
+      .setDepth(201)
+      .setInteractive({ useHandCursor: true });
+
+    addBtn.on('pointerdown', () => {
+      this.shop.addCoins(100);
+      this.debugCoinText.setText(`🪙 ${this.shop.coins}`);
+    });
+
+    const shopBtn = this.add
+      .text(GAME_WIDTH - 50, GAME_HEIGHT - 29, '[🛒]', {
+        fontFamily: FONTS.body,
+        fontSize: '16px',
+        color: '#5B6CFF',
+      })
+      .setOrigin(0, 0.5)
+      .setDepth(201)
+      .setInteractive({ useHandCursor: true });
+
+    shopBtn.on('pointerdown', () => {
+      if (this.patienceTimer) this.patienceTimer.remove();
+      this.scene.stop('HudScene');
+      this.scene.start('ShopScene', {
+        shop: this.shop,
+        returnScene: 'GameScene',
+        returnData: { shop: this.shop },
+      });
+    });
+
+    this.add
+      .text(GAME_WIDTH - 330, GAME_HEIGHT - 29, 'DEBUG', {
+        fontFamily: FONTS.body,
+        fontSize: '12px',
+        color: '#FF5E5B',
+      })
+      .setOrigin(0, 0.5)
+      .setDepth(201);
+  }
+
+  private createPowerUpIndicators() {
+    this.powerUpIndicators = [];
+    const effects = [
+      { id: 'time_freeze', icon: '⏱️', label: 'Freeze' },
+      { id: 'hint_reveal', icon: '💡', label: 'Hints' },
+      { id: 'double_points', icon: '⭐', label: '2x Pts' },
+      { id: 'tip_jar', icon: '🫙', label: 'Tips' },
+    ];
+
+    let offsetX = 200;
+    for (const eff of effects) {
+      const count = this.shop.getActiveEffect(eff.id);
+      if (count > 0) {
+        const label = eff.id === 'tip_jar' ? `${eff.icon} ${eff.label}` : `${eff.icon} ${count}`;
+        const txt = this.add
+          .text(offsetX, LAYOUT.hud.heartsY, label, {
+            fontFamily: FONTS.body,
+            fontSize: '20px',
+            color: '#FFB703',
+            backgroundColor: '#3A2E39',
+            padding: { x: 8, y: 3 },
+          })
+          .setOrigin(0, 0.5)
+          .setDepth(150);
+        this.powerUpIndicators.push(txt);
+        offsetX += txt.width + 12;
+      }
+    }
+  }
+
+  private updatePowerUpIndicators() {
+    for (const txt of this.powerUpIndicators) txt.destroy();
+    this.createPowerUpIndicators();
+  }
+
   private createServeButton() {
     const { x, y } = LAYOUT.serveButton;
-    this.serveButtonContainer = this.add.container(x, y - 10);
+    const container = this.add.container(x, y - 10);
 
     const g = this.add.graphics();
-    // Shadow
     g.fillStyle(COLORS.ink, 0.12);
     g.fillRoundedRect(-83, -23, 166, 50, 14);
-    // Button
     g.fillStyle(COLORS.mint, 1);
     g.fillRoundedRect(-80, -25, 160, 50, 14);
-    // Highlight
     g.fillStyle(0xffffff, 0.15);
     g.fillRoundedRect(-76, -22, 152, 22, { tl: 12, tr: 12, bl: 0, br: 0 });
     g.lineStyle(3, COLORS.ink, 0.7);
     g.strokeRoundedRect(-80, -25, 160, 50, 14);
-    this.serveButtonContainer.add(g);
+    container.add(g);
 
     const text = this.add
       .text(0, 0, 'SERVE ✓', {
@@ -123,13 +245,13 @@ export class GameScene extends Phaser.Scene {
         strokeThickness: 2,
       })
       .setOrigin(0.5);
-    this.serveButtonContainer.add(text);
+    container.add(text);
 
-    this.serveButtonContainer.setSize(160, 50);
-    this.serveButtonContainer.setInteractive({ useHandCursor: true });
-    this.serveButtonContainer.on('pointerdown', () => {
+    container.setSize(160, 50);
+    container.setInteractive({ useHandCursor: true });
+    container.on('pointerdown', () => {
       this.tweens.add({
-        targets: this.serveButtonContainer,
+        targets: container,
         scaleX: 0.94,
         scaleY: 0.94,
         duration: 60,
@@ -141,31 +263,27 @@ export class GameScene extends Phaser.Scene {
 
   private createDumpButton() {
     const { x, y } = LAYOUT.dumpButton;
-    this.dumpButtonContainer = this.add.container(x, y - 10);
+    const container = this.add.container(x, y - 10);
 
     const g = this.add.graphics();
     g.fillStyle(COLORS.accent, 0.5);
     g.fillRoundedRect(-60, -16, 120, 32, 10);
     g.lineStyle(2, COLORS.ink, 0.4);
     g.strokeRoundedRect(-60, -16, 120, 32, 10);
-    this.dumpButtonContainer.add(g);
+    container.add(g);
 
     const text = this.add
       .text(0, 0, 'DUMP ✕', {
         fontFamily: FONTS.body,
         fontSize: '18px',
         color: '#FFFDF7',
-        stroke: '#3A2E39',
-        strokeThickness: 1,
       })
       .setOrigin(0.5);
-    this.dumpButtonContainer.add(text);
+    container.add(text);
 
-    this.dumpButtonContainer.setSize(120, 32);
-    this.dumpButtonContainer.setInteractive({ useHandCursor: true });
-    this.dumpButtonContainer.on('pointerdown', () => {
-      this.handleDump();
-    });
+    container.setSize(120, 32);
+    container.setInteractive({ useHandCursor: true });
+    container.on('pointerdown', () => this.handleDump());
   }
 
   private spawnOrder() {
@@ -194,39 +312,49 @@ export class GameScene extends Phaser.Scene {
     // Customer arrives
     this.customer.arrive();
 
-    // Patience timer
+    // Patience timer (with time freeze bonus)
     if (this.patienceTimer) this.patienceTimer.remove();
-    this.patienceRemaining = this.currentOrder.patienceMs;
-    this.events.emit('timer-start', this.currentOrder.patienceMs);
+    let patience = this.currentOrder.patienceMs;
+    if (this.shop.consumeEffect('time_freeze')) {
+      patience += 5000;
+      this.showFloatingText('⏱️ +5s!', LAYOUT.glass.x, LAYOUT.glass.y, '#5B6CFF');
+      this.updatePowerUpIndicators();
+    }
+    this.patienceRemaining = patience;
+    this.events.emit('timer-start', patience);
 
     this.patienceTimer = this.time.addEvent({
       delay: 100,
       loop: true,
       callback: () => {
         this.patienceRemaining -= 100;
-        this.events.emit('timer-update', this.patienceRemaining, this.currentOrder!.patienceMs);
+        this.events.emit('timer-update', this.patienceRemaining, patience);
         if (this.patienceRemaining <= 0) {
           this.handleTimeout();
         }
       },
     });
 
-    // Hint check
-    if (this.difficulty.shouldHint()) {
-      this.showHint();
+    // Auto-hint if purchased
+    if (this.shop.hasEffect('hint_reveal') && this.difficulty.shouldHint()) {
+      this.shop.consumeEffect('hint_reveal');
+      this.showHintForOrder();
+      this.updatePowerUpIndicators();
+    } else if (this.difficulty.shouldHint()) {
+      this.showHintForOrder();
     }
   }
 
-  private showHint() {
+  private showHintForOrder() {
     if (!this.currentOrder) return;
     const req = this.currentOrder.requirements[0];
     const hint = this.add
-      .text(LAYOUT.glass.x, LAYOUT.glass.y - 20, `Try reaching ${req.target.toMixedString()}!`, {
+      .text(LAYOUT.glass.x, LAYOUT.glass.y - 20, `💡 Try reaching ${req.target.toMixedString()}!`, {
         fontFamily: FONTS.body,
-        fontSize: '18px',
+        fontSize: '20px',
         color: '#FFB703',
         backgroundColor: '#3A2E39',
-        padding: { x: 10, y: 4 },
+        padding: { x: 12, y: 5 },
       })
       .setOrigin(0.5)
       .setDepth(95)
@@ -240,11 +368,33 @@ export class GameScene extends Phaser.Scene {
         this.tweens.add({
           targets: hint,
           alpha: 0,
-          delay: 2500,
+          delay: 3000,
           duration: 500,
           onComplete: () => hint.destroy(),
         });
       },
+    });
+  }
+
+  private showFloatingText(text: string, x: number, y: number, color: string) {
+    const t = this.add
+      .text(x, y, text, {
+        fontFamily: FONTS.display,
+        fontSize: '28px',
+        color,
+        stroke: '#3A2E39',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(100);
+
+    this.tweens.add({
+      targets: t,
+      y: y - 50,
+      alpha: 0,
+      duration: 900,
+      ease: 'Power2',
+      onComplete: () => t.destroy(),
     });
   }
 
@@ -284,26 +434,26 @@ export class GameScene extends Phaser.Scene {
 
   private buildIngredientSelector() {
     const reqs = this.currentOrder!.requirements;
-    const startX = GAME_WIDTH / 2 - ((reqs.length - 1) * 140) / 2;
-    const y = LAYOUT.scoopPalette.y - 60;
+    const startX = GAME_WIDTH / 2 - ((reqs.length - 1) * 160) / 2;
+    const y = LAYOUT.scoopPalette.y - 70;
 
     reqs.forEach((req, i) => {
       const ing = this.ingredients.find((ig) => ig.id === req.ingredientId)!;
-      const container = this.add.container(startX + i * 140, y);
+      const container = this.add.container(startX + i * 160, y);
 
       const bg = this.add.graphics();
       const isSelected = req.ingredientId === this.selectedIngredientId;
       const color = hexStringToNumber(ing.colorHex);
       bg.fillStyle(color, isSelected ? 1 : 0.35);
-      bg.fillRoundedRect(-55, -18, 110, 36, 10);
+      bg.fillRoundedRect(-65, -20, 130, 40, 12);
       bg.lineStyle(isSelected ? 3 : 2, COLORS.ink, isSelected ? 0.8 : 0.3);
-      bg.strokeRoundedRect(-55, -18, 110, 36, 10);
+      bg.strokeRoundedRect(-65, -20, 130, 40, 12);
       container.add(bg);
 
       const text = this.add
         .text(0, 0, ing.name, {
           fontFamily: FONTS.body,
-          fontSize: '15px',
+          fontSize: '17px',
           color: '#FFFDF7',
           stroke: '#3A2E39',
           strokeThickness: 2,
@@ -311,7 +461,7 @@ export class GameScene extends Phaser.Scene {
         .setOrigin(0.5);
       container.add(text);
 
-      container.setSize(110, 36);
+      container.setSize(130, 40);
       container.setInteractive({ useHandCursor: true });
       container.on('pointerdown', () => {
         Sound.playTap();
@@ -367,7 +517,6 @@ export class GameScene extends Phaser.Scene {
     this.glass.updateFromState(this.glassState);
     this.glass.doWobble();
 
-    // Pour particles
     const ing = this.ingredients.find((i) => i.id === this.selectedIngredientId)!;
     const bounds = this.glass.getGlassWorldBounds();
     this.particles.emitPourDroplets(
@@ -391,17 +540,37 @@ export class GameScene extends Phaser.Scene {
     const result = validateServe(this.glassState, this.currentOrder);
 
     if (result.success) {
-      const reward = this.scoreManager.serveSuccess(
+      let reward = this.scoreManager.serveSuccess(
         this.currentOrder.tier,
         Math.max(0, this.patienceRemaining),
         this.currentOrder.patienceMs,
       );
+
+      // Double points effect
+      if (this.shop.consumeEffect('double_points')) {
+        const bonusPoints = reward.points;
+        this.scoreManager.addBonusScore(bonusPoints);
+        reward = { ...reward, points: reward.points * 2 };
+        this.showFloatingText('⭐ 2x!', LAYOUT.glass.x + 80, LAYOUT.glass.y, '#FFB703');
+        this.updatePowerUpIndicators();
+      }
+
+      // Tip jar bonus coins
+      let bonusCoins = 0;
+      if (this.shop.hasEffect('tip_jar')) {
+        bonusCoins = 2;
+      }
+
+      // Earn persistent coins
+      const totalCoinsEarned = reward.coinsAwarded + bonusCoins;
+      this.shop.addCoins(totalCoinsEarned);
+      if (this.debugCoinText) this.debugCoinText.setText(`🪙 ${this.shop.coins}`);
+
       this.difficulty.record({ correct: true, timeMs });
 
       Sound.playSuccess(reward.comboAfter);
       if (reward.comboAfter > 1) Sound.playCombo(reward.comboAfter);
 
-      // Visual juice
       const bounds = this.glass.getGlassWorldBounds();
       this.particles.emitConfetti(bounds.x + bounds.width / 2, bounds.y);
       this.particles.emitSparkle(bounds.x + bounds.width / 2, bounds.y - 20);
@@ -410,15 +579,16 @@ export class GameScene extends Phaser.Scene {
         bounds.y,
         LAYOUT.hud.scoreX - 200,
         LAYOUT.hud.heartsY,
-        Math.min(reward.coinsAwarded, 6),
+        Math.min(totalCoinsEarned, 6),
       );
 
-      // Camera punch
       const intensity = Math.min(1.04 + reward.comboAfter * 0.003, 1.08);
       this.cameras.main.zoomTo(intensity, 80, 'Sine.easeIn');
       this.time.delayedCall(80, () => this.cameras.main.zoomTo(1, 80));
 
       this.customer.setHappy();
+
+      this.showFloatingText(`+${reward.points}`, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 30, '#3CB371');
 
       this.events.emit('score-update', this.scoreManager.score, this.scoreManager.coins);
       this.events.emit('combo-update', this.scoreManager.combo);
@@ -440,6 +610,18 @@ export class GameScene extends Phaser.Scene {
       this.cameras.main.shake(200, 0.005);
       this.customer.setSad();
 
+      const msg =
+        result.reason === 'over'
+          ? 'TOO MUCH!'
+          : result.reason === 'under'
+            ? 'NOT ENOUGH!'
+            : result.reason === 'extra-ingredient'
+              ? 'WRONG MIX!'
+              : result.reason === 'wrong-ingredient'
+                ? 'MISSING!'
+                : 'WRONG!';
+      this.showFloatingText(msg, GAME_WIDTH / 2, GAME_HEIGHT / 2, '#FF5E5B');
+
       this.events.emit('combo-update', 0);
       this.events.emit('tier-update', this.difficulty.currentTier);
       this.events.emit('serve-fail');
@@ -449,6 +631,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleDump() {
+    if (this.isServing) return;
     Sound.playDump();
     this.glassState = [];
     this.glass.updateFromState(this.glassState);
@@ -462,6 +645,7 @@ export class GameScene extends Phaser.Scene {
 
     Sound.playError();
     this.customer.setSad();
+    this.showFloatingText('TIME UP!', GAME_WIDTH / 2, GAME_HEIGHT / 2, '#FFB703');
     this.loseHeart();
 
     this.events.emit('combo-update', 0);
@@ -484,6 +668,7 @@ export class GameScene extends Phaser.Scene {
           tier: this.difficulty.currentTier,
           customers: this.scoreManager.customersServed,
           coins: this.scoreManager.coins,
+          persistentCoins: this.shop.coins,
         });
       });
     } else {
