@@ -3,6 +3,8 @@ import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { MenuScene } from './scenes/MenuScene';
 import { ShopScene } from './scenes/ShopScene';
+import { MapScene } from './scenes/MapScene';
+import { MathBattleScene } from './scenes/MathBattleScene';
 import { GameScene } from './scenes/GameScene';
 import { HudScene } from './scenes/HudScene';
 import { ResultsScene } from './scenes/ResultsScene';
@@ -24,6 +26,8 @@ const config: Phaser.Types.Core.GameConfig = {
     PreloadScene,
     MenuScene,
     ShopScene,
+    MapScene,
+    MathBattleScene,
     GameScene,
     HudScene,
     ResultsScene,

@@ -15,6 +15,15 @@ import { ParticleManager } from '../effects/ParticleManager';
 import * as Sound from '../audio/SoundSynth';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS, FONTS, LAYOUT } from '../config/constants';
 import { hexStringToNumber } from '../utils/ColorUtils';
+import { RunState } from '../core/RunState';
+
+interface GameSceneData {
+  shop?: ShopManager;
+  runState?: RunState;
+  nodeId?: string;
+  adventure?: boolean;
+  customerCount?: number;
+}
 
 export class GameScene extends Phaser.Scene {
   private orderGen!: OrderGenerator;
@@ -43,11 +52,18 @@ export class GameScene extends Phaser.Scene {
   private debugCoinText!: Phaser.GameObjects.Text;
   private powerUpIndicators: Phaser.GameObjects.Text[] = [];
 
+  // Adventure mode
+  private adventureMode = false;
+  private runState: RunState | null = null;
+  private nodeId: string | null = null;
+  private customerTarget = 0;
+  private customersCompleted = 0;
+
   constructor() {
     super({ key: 'GameScene' });
   }
 
-  create(data?: { shop?: ShopManager }) {
+  create(data?: GameSceneData) {
     this.config = this.registry.get('skillConfig') as SkillConfig;
     this.ingredients = this.config.ingredients;
 
@@ -57,10 +73,19 @@ export class GameScene extends Phaser.Scene {
     this.scoreManager = new ScoreManager();
     this.scoreManager.reset();
 
+    // Adventure mode setup
+    this.adventureMode = data?.adventure ?? false;
+    this.runState = data?.runState ?? null;
+    this.nodeId = data?.nodeId ?? null;
+    this.customerTarget = data?.customerCount ?? 0;
+    this.customersCompleted = 0;
+
     // Shop integration
     this.shop = data?.shop ?? new ShopManager();
 
-    this.lives = this.config.meta.lives;
+    this.lives = this.adventureMode && this.runState
+      ? this.runState.lives
+      : this.config.meta.lives;
     this.glassState = [];
     this.isServing = false;
     this.particles = new ParticleManager(this);
@@ -599,6 +624,14 @@ export class GameScene extends Phaser.Scene {
 
       this.time.delayedCall(700, () => {
         this.customer.leave();
+        this.customersCompleted++;
+
+        // Adventure mode: return to map after N customers
+        if (this.adventureMode && this.customerTarget > 0 && this.customersCompleted >= this.customerTarget) {
+          this.time.delayedCall(300, () => this.handleAdventureComplete());
+          return;
+        }
+
         this.time.delayedCall(300, () => this.spawnOrder());
       });
     } else {
@@ -652,24 +685,57 @@ export class GameScene extends Phaser.Scene {
     this.events.emit('tier-update', this.difficulty.currentTier);
   }
 
+  private handleAdventureComplete() {
+    if (this.patienceTimer) this.patienceTimer.remove();
+    this.scene.stop('HudScene');
+
+    const earnedCoins = this.scoreManager.coins;
+    this.shop.addCoins(earnedCoins);
+    if (this.runState) {
+      this.runState.addScore(this.scoreManager.score);
+    }
+
+    this.cameras.main.fadeOut(300);
+    this.time.delayedCall(400, () => {
+      this.scene.start('MapScene', { runState: this.runState });
+    });
+  }
+
   private loseHeart() {
     this.lives--;
     Sound.playHeartLoss();
     this.events.emit('lives-update', this.lives);
+
+    // Sync lives back to run state
+    if (this.adventureMode && this.runState) {
+      this.runState.lives = this.lives;
+    }
 
     if (this.lives <= 0) {
       if (this.patienceTimer) this.patienceTimer.remove();
       this.cameras.main.fadeOut(600, 58, 46, 57);
       this.time.delayedCall(700, () => {
         this.scene.stop('HudScene');
-        this.scene.start('ResultsScene', {
-          score: this.scoreManager.score,
-          bestScore: this.scoreManager.bestScore,
-          tier: this.difficulty.currentTier,
-          customers: this.scoreManager.customersServed,
-          coins: this.scoreManager.coins,
-          persistentCoins: this.shop.coins,
-        });
+        if (this.adventureMode && this.runState) {
+          this.scene.start('ResultsScene', {
+            score: this.runState.score + this.scoreManager.score,
+            bestScore: 0,
+            tier: 0,
+            customers: this.scoreManager.customersServed,
+            coins: this.scoreManager.coins,
+            persistentCoins: this.shop.coins,
+            adventure: true,
+          });
+        } else {
+          this.scene.start('ResultsScene', {
+            score: this.scoreManager.score,
+            bestScore: this.scoreManager.bestScore,
+            tier: this.difficulty.currentTier,
+            customers: this.scoreManager.customersServed,
+            coins: this.scoreManager.coins,
+            persistentCoins: this.shop.coins,
+          });
+        }
       });
     } else {
       if (this.patienceTimer) this.patienceTimer.remove();

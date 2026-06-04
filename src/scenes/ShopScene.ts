@@ -8,10 +8,14 @@ export class ShopScene extends Phaser.Scene {
   private coinText!: Phaser.GameObjects.Text;
   private itemButtons: Array<{
     container: Phaser.GameObjects.Container;
+    cardBg: Phaser.GameObjects.Graphics;
+    btnBg: Phaser.GameObjects.Graphics;
     costText: Phaser.GameObjects.Text;
     ownedText: Phaser.GameObjects.Text;
     itemId: string;
   }> = [];
+  private returnScene = 'MenuScene';
+  private returnData: Record<string, unknown> = {};
 
   constructor() {
     super({ key: 'ShopScene' });
@@ -19,10 +23,11 @@ export class ShopScene extends Phaser.Scene {
 
   create(data: { shop: ShopManager; returnScene: string; returnData?: Record<string, unknown> }) {
     this.shop = data.shop;
+    this.returnScene = data.returnScene || 'MenuScene';
+    this.returnData = data.returnData || {};
     const cx = GAME_WIDTH / 2;
     const cy = GAME_HEIGHT / 2;
 
-    // Background overlay
     if (this.textures.exists('bg')) {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg').setAlpha(0.4);
     }
@@ -30,7 +35,6 @@ export class ShopScene extends Phaser.Scene {
     overlay.fillStyle(COLORS.ink, 0.4);
     overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    // Shop panel
     const pw = 900;
     const ph = 750;
     const panel = this.add.graphics();
@@ -39,7 +43,6 @@ export class ShopScene extends Phaser.Scene {
     panel.lineStyle(4, COLORS.ink, 0.6);
     panel.strokeRoundedRect(cx - pw / 2, cy - ph / 2, pw, ph, 24);
 
-    // Header
     panel.fillStyle(COLORS.mango, 0.95);
     panel.fillRoundedRect(cx - pw / 2, cy - ph / 2, pw, 70, { tl: 24, tr: 24, bl: 0, br: 0 });
 
@@ -61,7 +64,6 @@ export class ShopScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Items grid
     const itemsPerRow = 3;
     const itemW = 250;
     const itemH = 240;
@@ -78,45 +80,45 @@ export class ShopScene extends Phaser.Scene {
       const row = Math.floor(i / itemsPerRow);
       const ix = gridStartX + col * (itemW + gapX);
       const iy = gridStartY + row * (itemH + gapY);
+      const canBuy = this.shop.canBuy(item.id);
 
       const container = this.add.container(ix, iy);
 
       // Card background
       const cardBg = this.add.graphics();
-      const canBuy = this.shop.canBuy(item.id);
       cardBg.fillStyle(canBuy ? COLORS.surface : 0xdddddd, 1);
       cardBg.fillRoundedRect(-itemW / 2, -itemH / 2, itemW, itemH, 14);
       cardBg.lineStyle(3, canBuy ? COLORS.ink : 0xaaaaaa, 0.6);
       cardBg.strokeRoundedRect(-itemW / 2, -itemH / 2, itemW, itemH, 14);
       container.add(cardBg);
 
-      // Icon
-      this.add
+      // Icon — store reference, add explicitly
+      const iconText = this.add
         .text(0, -itemH / 2 + 40, item.icon, { fontSize: '48px' })
         .setOrigin(0.5);
-      container.add(container.last!);
+      container.add(iconText);
 
       // Name
-      this.add
+      const nameText = this.add
         .text(0, -itemH / 2 + 90, item.name, {
           fontFamily: FONTS.display,
           fontSize: '22px',
           color: '#3A2E39',
         })
         .setOrigin(0.5);
-      container.add(container.last!);
+      container.add(nameText);
 
       // Description
-      this.add
-        .text(0, -itemH / 2 + 120, item.description, {
+      const descText = this.add
+        .text(0, -itemH / 2 + 118, item.description, {
           fontFamily: FONTS.body,
-          fontSize: '16px',
+          fontSize: '15px',
           color: '#666666',
           wordWrap: { width: itemW - 30 },
           align: 'center',
         })
         .setOrigin(0.5, 0);
-      container.add(container.last!);
+      container.add(descText);
 
       // Owned count
       const ownedText = this.add
@@ -157,7 +159,7 @@ export class ShopScene extends Phaser.Scene {
         container.on('pointerout', () => container.setScale(1));
       }
 
-      this.itemButtons.push({ container, costText, ownedText, itemId: item.id });
+      this.itemButtons.push({ container, cardBg, btnBg, costText, ownedText, itemId: item.id });
     });
 
     // Continue button
@@ -170,7 +172,7 @@ export class ShopScene extends Phaser.Scene {
     contBg.lineStyle(3, COLORS.ink, 0.7);
     contBg.strokeRoundedRect(cx - 140, contY - 28, 280, 56, 16);
 
-    const contText = this.add
+    this.add
       .text(cx, contY, 'Continue →', {
         fontFamily: FONTS.display,
         fontSize: '28px',
@@ -185,7 +187,7 @@ export class ShopScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         playTap();
-        this.scene.start(data.returnScene, data.returnData);
+        this.scene.start(this.returnScene, this.returnData);
       });
 
     this.cameras.main.fadeIn(200);

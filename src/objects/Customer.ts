@@ -5,6 +5,7 @@ export class Customer extends Phaser.GameObjects.Container {
   private sprite: Phaser.GameObjects.Image;
   private variant: number;
   private idleTween: Phaser.Tweens.Tween | null = null;
+  private arriveTween: Phaser.Tweens.Tween | null = null;
   private homeX: number;
   private homeY: number;
   private lastVariant = -1;
@@ -18,17 +19,15 @@ export class Customer extends Phaser.GameObjects.Container {
     this.sprite = scene.add.image(0, 0, `customer_${this.variant}_happy`);
     this.sprite.setScale(1.8);
     this.add(this.sprite);
+    this.setVisible(false);
 
     scene.add.existing(this);
   }
 
   arrive() {
-    if (this.idleTween) {
-      this.idleTween.stop();
-      this.idleTween = null;
-    }
+    this.stopAllTweens();
 
-    // Pick a different variant than last time
+    // Pick different variant
     let newVariant: number;
     do {
       newVariant = Phaser.Math.Between(0, 4);
@@ -40,18 +39,37 @@ export class Customer extends Phaser.GameObjects.Container {
     this.setPosition(GAME_WIDTH + 100, this.homeY);
     this.setAlpha(1);
     this.setScale(1);
+    this.setVisible(true);
 
-    this.scene.tweens.add({
+    this.arriveTween = this.scene.tweens.add({
       targets: this,
       x: this.homeX,
       duration: 500,
       ease: 'Back.easeOut',
-      onComplete: () => this.startIdleBob(),
+      onComplete: () => {
+        this.arriveTween = null;
+        this.setPosition(this.homeX, this.homeY);
+        this.startIdleBob();
+      },
+    });
+
+    // Safety: force into position if tween didn't complete
+    this.scene.time.delayedCall(700, () => {
+      if (!this.visible || Math.abs(this.x - this.homeX) > 50) {
+        this.setPosition(this.homeX, this.homeY);
+        this.setAlpha(1);
+        this.setVisible(true);
+        this.startIdleBob();
+      }
     });
   }
 
   private startIdleBob() {
-    if (this.idleTween) this.idleTween.stop();
+    if (this.idleTween) {
+      this.idleTween.stop();
+      this.idleTween = null;
+    }
+    this.setY(this.homeY);
     this.idleTween = this.scene.tweens.add({
       targets: this,
       y: this.homeY - 8,
@@ -76,34 +94,42 @@ export class Customer extends Phaser.GameObjects.Container {
 
   setSad() {
     this.sprite.setTexture(`customer_${this.variant}_sad`);
+    const baseX = this.x;
     this.scene.tweens.add({
       targets: this,
-      x: this.x + 6,
+      x: baseX + 6,
       duration: 50,
       yoyo: true,
       repeat: 3,
+      onComplete: () => this.setX(baseX),
     });
   }
 
   leave() {
-    if (this.idleTween) {
-      this.idleTween.stop();
-      this.idleTween = null;
-    }
+    this.stopAllTweens();
     this.scene.tweens.add({
       targets: this,
       x: -200,
       alpha: 0,
       duration: 400,
       ease: 'Power2',
+      onComplete: () => this.setVisible(false),
     });
   }
 
-  destroy(fromScene?: boolean) {
+  private stopAllTweens() {
     if (this.idleTween) {
       this.idleTween.stop();
       this.idleTween = null;
     }
+    if (this.arriveTween) {
+      this.arriveTween.stop();
+      this.arriveTween = null;
+    }
+  }
+
+  destroy(fromScene?: boolean) {
+    this.stopAllTweens();
     super.destroy(fromScene);
   }
 }
