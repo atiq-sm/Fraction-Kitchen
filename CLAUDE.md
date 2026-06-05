@@ -13,8 +13,8 @@
 - `npm run lint` — ESLint check
 
 ## Architecture
-- `src/core/` — Pure TypeScript math engine (Fraction, Glass, OrderGenerator, DifficultyManager, ScoreManager)
-- `src/scenes/` — Phaser scenes (Boot, Preload, Menu, Game, HUD, Results, Lobby)
+- `src/core/` — Pure TypeScript math engine (Fraction, Glass, OrderGenerator, DifficultyManager, ScoreManager, MapGenerator, MathProblemGenerator, RunState, ShopManager)
+- `src/scenes/` — Phaser scenes (Boot, Preload, Menu, Map, Game, MathBattle, Shop, HUD, Results, Lobby)
 - `src/objects/` — Visual game objects (GlassVisual, ScoopButton, Ticket, Customer)
 - `src/art/` — Programmatic texture generation (ArtGenerator)
 - `src/audio/` — Web Audio API synthesized sounds (SoundSynth)

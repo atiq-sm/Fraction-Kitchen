@@ -1,8 +1,10 @@
 # Fraction Kitchen
 
-**A gamified, adaptive fractions game for K–12 math practice.**
+**A gamified math adventure game for K-12 practice — fractions, addition, subtraction, and multiplication.**
 
-Players run a juice/smoothie bar where customers order fractional amounts of ingredients. Pour unit-fraction scoops into a glass to match the target — the game accepts **every equivalent solution** (½+¼, ¼×3, ⅜×2 all satisfy ¾) because validation uses reduced-fraction equality. Difficulty adapts in real time across five tiers.
+Players run a juice bar where customers order fractional amounts of ingredients. But that's just the start: a full roguelike adventure mode sends players through a branching overworld map of math challenges, shops, treasure chests, and a final boss battle.
+
+**Live demo:** [https://atiq-sm.github.io/Fraction-Kitchen/](https://atiq-sm.github.io/Fraction-Kitchen/)
 
 ## Quick Start
 
@@ -13,96 +15,126 @@ npm test           # 216 tests, <1s
 npm run build      # static dist/ for deployment
 ```
 
-### Multiplayer Server (optional)
+## Game Modes
+
+### Adventure Mode (Roguelike)
+
+A Slay-the-Spire-style branching map with 4 rows of nodes leading to a boss fight:
+
+| Node Type | What Happens | Reward |
+|-----------|-------------|--------|
+| Addition (+) | 3 multiple-choice addition problems | 15-30 coins |
+| Subtraction (-) | 3 subtraction problems | 15-30 coins |
+| Multiplication (x) | 3 multiplication problems | 20-40 coins |
+| Fractions (glass) | 3 fraction-pouring customers | 25-50 coins |
+| Boss (skull) | 5 mixed problems, harder difficulty | 100 coins + victory |
+| Shop (cart) | Buy power-ups with coins | — |
+| Chest (gift) | Random coin reward | 20-50 coins |
+| Rest (bed) | Heal +1 heart | — |
+
+**Flow:** Menu -> Map -> pick a node -> complete encounter -> return to map -> reach and defeat boss.
+
+Difficulty scales by row — early nodes use single-digit arithmetic, later rows introduce larger numbers and fractions.
+
+### Quick Play
+
+Classic endless fractions mode. Pour unit-fraction scoops into a glass to match customer orders. The game accepts **every equivalent solution** (1/2 + 1/4, 1/4 x 3, 3/8 x 2 all satisfy 3/4) because validation uses reduced-fraction equality. Difficulty adapts in real time across five tiers.
+
+### Multiplayer
+
+Head-to-head fraction battles via WebSocket. Create or join a room with a 4-character code. Both players get the same RNG seed for identical order sequences — first correct serve wins each round.
 
 ```bash
-cd server
-npm install
-npm start          # WebSocket relay on port 8080
+cd server && npm install && npm start   # WebSocket relay on port 8080
 ```
 
 ## Architecture
 
 ```
 src/
-├── core/              ← Pure TypeScript, NO Phaser imports (enforced by ESLint)
-│   ├── Fraction.ts    ← Immutable rational arithmetic, reduced-equality engine
-│   ├── Glass.ts       ← Aggregation + validateServe (equivalence acceptance)
-│   ├── OrderGenerator ← Solvability-guaranteed orders (sum of available scoops)
-│   ├── DifficultyMgr  ← Rolling-window adaptive promote/demote across 5 tiers
-│   └── ScoreManager   ← Points, combo multiplier, time bonus, persistence
-├── scenes/            ← Phaser scene lifecycle
-├── objects/           ← Visual game objects (Glass, Customer, ScoopButton, Ticket)
-├── art/               ← Programmatic texture generation (ArtGenerator)
-├── audio/             ← Web Audio API synthesized sounds (zero audio files)
-├── effects/           ← Particle + tween effects
-├── ui/                ← HUD components (TimerBar, Hearts, ComboText, CoinCounter)
-└── multiplayer/       ← WebSocket client for head-to-head mode
+├── core/                  <- Pure TypeScript, NO Phaser imports (enforced by ESLint)
+│   ├── Fraction.ts        <- Immutable rational arithmetic, reduced-equality engine
+│   ├── Glass.ts           <- Aggregation + validateServe (equivalence acceptance)
+│   ├── OrderGenerator.ts  <- Solvability-guaranteed orders (sum of available scoops)
+│   ├── DifficultyManager.ts <- Rolling-window adaptive promote/demote across 5 tiers
+│   ├── ScoreManager.ts    <- Points, combo multiplier, time bonus, persistence
+│   ├── MapGenerator.ts    <- Branching node-graph map (roguelike overworld)
+│   ├── MathProblemGenerator.ts <- Addition/subtraction/multiplication problem gen
+│   ├── RunState.ts        <- Roguelike run state (lives, coins, map position, power-ups)
+│   ├── ShopManager.ts     <- Power-up shop with persistent coins (localStorage)
+│   ├── RNG.ts             <- Seeded random number generator
+│   └── types.ts           <- Shared type definitions
+├── scenes/                <- Phaser scene lifecycle
+│   ├── BootScene.ts       <- Asset loading bootstrap
+│   ├── PreloadScene.ts    <- Texture generation + loading screen
+│   ├── MenuScene.ts       <- Main menu (Adventure / Quick Play / Multiplayer)
+│   ├── MapScene.ts        <- Roguelike overworld map with node selection
+│   ├── GameScene.ts       <- Fraction-pouring gameplay (glass + scoops)
+│   ├── MathBattleScene.ts <- Multiple-choice math problems (add/sub/mul)
+│   ├── ShopScene.ts       <- Power-up shop between encounters
+│   ├── HudScene.ts        <- Overlay HUD (hearts, score, timer, combo)
+│   ├── ResultsScene.ts    <- End-of-run results and stats
+│   └── LobbyScene.ts      <- Multiplayer room creation/joining
+├── objects/               <- Visual game objects
+│   ├── GlassVisual.ts     <- Animated glass with geometry-masked liquid
+│   ├── ScoopButton.ts     <- Fraction scoop interaction buttons
+│   ├── Customer.ts        <- Animated customer with order ticket
+│   └── Ticket.ts          <- Order display ticket
+├── art/                   <- Programmatic texture generation (ArtGenerator)
+├── audio/                 <- Web Audio API synthesized sounds (zero audio files)
+├── effects/               <- Particle + tween effects (ParticleManager)
+├── ui/                    <- HUD components (TimerBar, Hearts, ComboText, CoinCounter)
+├── multiplayer/           <- WebSocket client for head-to-head mode
+├── utils/                 <- Color utilities, localStorage persistence
+└── config/
+    ├── constants.ts       <- Game dimensions, colors, fonts
+    └── skill.json         <- Data-driven gameplay parameters (tiers, ingredients, timing)
 ```
 
-**Dependency rule:** `src/core/` is Phaser-free and fully unit-tested. All 216 tests run headless in <1 second. This separation means the math engine can be verified, iterated, and reused independently of the rendering layer.
+**Dependency rule:** `src/core/` is Phaser-free and fully unit-tested. All 216 tests run headless in <1 second. The math engine can be verified and iterated independently of the rendering layer.
 
-**Data flow:** `GameScene` holds the core managers and current `GlassState`. Player input on a `ScoopButton` pushes a `Pour` and updates the visual `Glass`. Pressing **Serve** calls `validateServe()`, feeds a `PerfSample` to `DifficultyManager`, updates `ScoreManager`, and emits events the `HudScene` listens to via the Phaser event emitter.
+## Skill File (`skill.json`)
 
-## The Skill File (`skill.json`)
+All gameplay parameters are data-driven. Changing grade band, theme, ingredients, session length, or difficulty curve requires no code changes — edit `src/config/skill.json`.
 
-**All gameplay parameters are data-driven.** Changing grade band, theme, ingredients, session length, or difficulty curve requires **no code changes** — just edit `src/config/skill.json`.
+Defines:
+- Session mode: endless (lives), fixed-count, or timed shift
+- Ingredients: name, ID, and color (blended visually when poured)
+- 5 difficulty tiers: allowed denominators, ingredient count, scoop range, patience timers
+- Adaptive difficulty thresholds: promote/demote accuracy, speed gating, window size
 
-The skill file defines:
-- **Session mode**: endless (lives), fixed-count, or timed shift
-- **Ingredients**: name, ID, and color (blended visually when poured)
-- **5 difficulty tiers**: allowed denominators, ingredient count, scoop range, patience timers
-- **Adaptive difficulty thresholds**: promote/demote accuracy, speed gating, window size
+## Adaptive Difficulty (Fractions Mode)
 
-This is Phase 1 of the production pipeline: a serializable config that drives the entire game experience.
+| Tier | Grade | Denominators | Ingredients | Mixed Numbers | Patience |
+|------|-------|-------------|-------------|---------------|----------|
+| T1 | Gr 3 | {2, 3, 4} | 1 | No | 14s |
+| T2 | Gr 3-4 | {2, 3, 4, 6} | 1 | No | 12s |
+| T3 | Gr 4-5 | {2, 3, 4, 6} | 1 | No | 11s |
+| T4 | Gr 5 | {2, 3, 4, 6, 8} | 1-2 | Yes | 10s |
+| T5 | Gr 5-6 | {2, 3, 4, 6, 8} | 2-3 | Yes | 9s |
 
-## AI-First Workflow
+The `DifficultyManager` uses a rolling window of 5 recent orders. Promote when >=80% correct and average serve time <=6s. Demote when <=40% correct.
 
-This project was built entirely using an **AI-first development workflow** with Claude Code:
+## Shop & Power-ups
 
-1. **Spec → Plan**: The build specification was fed to Claude Code, which produced a milestone-based implementation plan (M0–M9) with acceptance criteria per phase.
+Coins earned during play persist via localStorage. Spend them in the shop (accessible from map nodes or before Quick Play):
 
-2. **Core engine (test-first)**: The pure-TypeScript math engine (`Fraction`, `Glass`, `OrderGenerator`, `DifficultyManager`, `ScoreManager`) was developed test-first with 216 Vitest cases covering equivalence, solvability invariants, and adaptive difficulty behavior.
-
-3. **Programmatic art generation**: All visual assets are generated via Phaser's Graphics API in `src/art/ArtGenerator.ts` — no external AI image tools required. Techniques include layered gradients, geometry masking for liquid rendering, and shape composition for characters.
-
-4. **Synthesized audio**: All game sounds are created at runtime using the Web Audio API (`src/audio/SoundSynth.ts`) — oscillators, filtered noise, and envelopes produce taps, pours, chimes, and buzzes with zero audio file dependencies.
-
-5. **Iterative assembly**: Each milestone was built, tested (`npm test` + `npm run lint`), and committed with conventional-commit messages before proceeding.
-
-See `public/assets/assets.md` for the complete asset manifest documenting every programmatic texture and audio synthesis technique.
-
-## Adaptive Difficulty
-
-| Tier | Grade | Denominators | Ingredients | Mixed Numbers | Patience | Teaches |
-|------|-------|-------------|-------------|---------------|----------|---------|
-| T1 | Gr 3 | {2, 3, 4} | 1 | No | 14s | Count unit fractions |
-| T2 | Gr 3–4 | {2, 3, 4, 6} | 1 | No | 12s | Equivalence |
-| T3 | Gr 4–5 | {2, 3, 4, 6} | 1 | No | 11s | Unlike denominators |
-| T4 | Gr 5 | {2, 3, 4, 6, 8} | 1–2 | Yes | 10s | Multi-ingredient + mixed |
-| T5 | Gr 5–6 | {2, 3, 4, 6, 8} | 2–3 | Yes | 9s | Simplify under pressure |
-
-The `DifficultyManager` uses a rolling window of 5 recent orders. Promote when ≥80% correct and average serve time ≤6s. Demote when ≤40% correct. Window clears on tier change.
-
-## Multiplayer
-
-Head-to-head mode uses a lightweight WebSocket relay server (`server/index.ts`):
-- **Create/Join**: One player creates a room (gets a 4-character code), the other joins
-- **Shared seed**: Both players receive the same RNG seed → identical order sequences
-- **Race format**: First correct serve wins each round. Best of 5 rounds wins the match
-- **Real-time sync**: Pour and serve events are relayed so players see opponent progress
-
-The data model is serializable — `GlassState` is a plain array of `Pour` objects, `Order` is plain data. This architecture supports future scaling to persistent lobbies, ranked matchmaking, or spectator modes.
+- **Extra Heart** — +1 max life
+- **Speed Boost** — more patience time per order
+- **Double Coins** — 2x coin earnings for the run
+- **Hint Power** — shows a hint on the next order
+- **Lucky Start** — begin with bonus coins
 
 ## Tech Stack
 
-- **Phaser 3** — game engine (WebGL renderer, Scale.FIT for responsive)
+- **Phaser 3.80** — WebGL game engine, Scale.FIT responsive layout
 - **TypeScript** — strict mode, no `any`
-- **Vite** — instant HMR, static build output
-- **Vitest** — fast headless tests for `core/`
+- **Vite** — instant HMR, static build
+- **Vitest** — fast headless unit tests for `core/`
 - **ESLint + Prettier** — enforced code style + Phaser import ban in `core/`
-- **Web Audio API** — runtime sound synthesis
+- **Web Audio API** — all sounds synthesized at runtime (zero audio files)
 - **WebSocket (ws)** — multiplayer relay server
+- **GitHub Actions** — auto-deploy to GitHub Pages on push to `main`
 
 ## Testing
 
@@ -111,25 +143,37 @@ npm test           # 216 tests in <1s
 ```
 
 Coverage areas:
-- **Fraction**: arithmetic, reduction, equivalence (`1/2 == 2/4 == 3/6`), display, edge cases
-- **OrderGenerator**: solvability invariant across 30 seeds × 5 tiers (150 property tests)
+- **Fraction**: arithmetic, reduction, equivalence (`1/2 == 2/4 == 3/6`), edge cases
+- **OrderGenerator**: solvability invariant across 30 seeds x 5 tiers (150 property tests)
 - **DifficultyManager**: promote/demote logic, bounds, window clearing, hint flags
 - **ScoreManager**: combo multiplier math, time bonus monotonicity, persistence
 - **Glass**: aggregation, all 5 ServeResult types, multi-ingredient validation
 
-## Deploy
+## Deployment
 
+Auto-deploys to GitHub Pages on every push to `main` via `.github/workflows/deploy.yml`.
+
+To set up:
+1. Go to repo Settings -> Pages
+2. Set Source to **GitHub Actions**
+3. Push to `main` — the workflow runs tests, builds, and deploys
+
+Manual deploy:
 ```bash
 npm run build      # produces dist/
-# Deploy dist/ to Vercel, Netlify, or itch.io
+# Deploy dist/ to any static host
 ```
 
 The game is fully offline-playable after initial load. No network calls in single-player mode.
 
-## Future
+## AI-First Workflow
 
-- **Theme swaps via skill.json**: pizza-fractions counter, plating station — no code change
-- **Placement mini-test**: determine opening tier from initial assessment
-- **Daily challenge seed**: deterministic via the seeded RNG
-- **Accessibility**: colorblind-safe ingredient patterns + larger-text mode
-- **Multiplayer scaling**: persistent lobbies, ranked matchmaking, spectator mode
+This project was built using an AI-first development workflow with Claude Code:
+
+1. **Spec-driven**: Build specification fed to Claude Code, producing a milestone-based implementation plan with acceptance criteria per phase
+2. **Core engine (test-first)**: Pure TypeScript math engine developed test-first with 216 Vitest cases covering equivalence, solvability invariants, and adaptive difficulty
+3. **Programmatic art**: All visuals generated via Phaser's Graphics API — layered gradients, geometry masking for liquid, shape composition for characters
+4. **Synthesized audio**: All sounds created at runtime using Web Audio API oscillators, filtered noise, and envelopes
+5. **Roguelike expansion**: Adventure mode with branching map, multiple math types, boss battles, and shop system added iteratively with scene lifecycle debugging
+
+See `public/assets/assets.md` for the complete asset manifest.
