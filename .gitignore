@@ -4,3 +4,9 @@ server/node_modules/
 *.log
 .DS_Store
 .env
+
+# Employer-internal materials — keep local only, never publish
+*.docx
+Game-Dev-SF.md
+CHANGE_PLAN.md
+.claude/skills/
