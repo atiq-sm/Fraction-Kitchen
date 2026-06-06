@@ -9,11 +9,24 @@ export class MultiplayerClient {
     this.url = url;
   }
 
-  connect(): Promise<void> {
+  connect(timeoutMs = 5000): Promise<void> {
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(this.url);
-      this.ws.onopen = () => resolve();
-      this.ws.onerror = () => reject(new Error('WebSocket connection failed'));
+
+      // Fail fast instead of hanging if the relay isn't reachable.
+      const timer = setTimeout(() => {
+        this.ws?.close();
+        reject(new Error('WebSocket connection timed out'));
+      }, timeoutMs);
+
+      this.ws.onopen = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      this.ws.onerror = () => {
+        clearTimeout(timer);
+        reject(new Error('WebSocket connection failed'));
+      };
       this.ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data as string);

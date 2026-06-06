@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, COLORS, FONTS } from '../config/constants';
+import { GAME_WIDTH, GAME_HEIGHT, COLORS, FONTS, FEATURES } from '../config/constants';
 import { initAudio, isMuted, setMuted, playTap } from '../audio/SoundSynth';
 import { ScoreManager } from '../core/ScoreManager';
 import { ShopManager } from '../core/ShopManager';
@@ -80,12 +80,14 @@ export class MenuScene extends Phaser.Scene {
       );
     });
 
-    // MULTIPLAYER button
-    this.makeButton(cx, panelTop + 465, 220, 46, 'MULTIPLAYER', COLORS.blue, () => {
-      initAudio();
-      playTap();
-      this.scene.start('LobbyScene');
-    });
+    // MULTIPLAYER button — only in dev (needs local WebSocket relay, absent on static prod build)
+    if (FEATURES.multiplayer) {
+      this.makeButton(cx, panelTop + 465, 220, 46, 'MULTIPLAYER', COLORS.blue, () => {
+        initAudio();
+        playTap();
+        this.scene.start('LobbyScene');
+      });
+    }
 
     // Stats
     const sm = new ScoreManager();

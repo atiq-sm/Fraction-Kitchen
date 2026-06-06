@@ -1,6 +1,12 @@
 export const GAME_WIDTH = 1920;
 export const GAME_HEIGHT = 1080;
 
+// Feature flags. Multiplayer needs the local WebSocket relay (server/, port 8080),
+// which isn't available on the static GitHub Pages build — hide it in production.
+export const FEATURES = {
+  multiplayer: !import.meta.env.PROD,
+} as const;
+
 export const COLORS = {
   bgTop: 0xffd8a8,
   bgBottom: 0xffb088,
